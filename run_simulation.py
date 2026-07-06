@@ -1,3 +1,6 @@
+import stats
+print(stats.__file__)
+
 import pandas as pd
 
 from simulator import simulate_season
@@ -10,6 +13,7 @@ from stats import (
 )
 from playoffs import simulate_playoffs
 
+
 # =====================================================
 # SETTINGS
 # =====================================================
@@ -17,12 +21,17 @@ from playoffs import simulate_playoffs
 N_SIMULATIONS = 1000
 CUTOFF_DATE = "2026-07-05"
 
+
 # =====================================================
 # LOAD DATA
 # =====================================================
 
 standings = pd.read_csv("Data/standings.csv")
+print("Columns:", standings.columns.tolist())
+print(standings[["Team", "Wins", "Losses", "Ties"]].head())
+
 schedule = pd.read_csv("Data/schedule.csv")
+
 
 # =====================================================
 # CLEAN DATE
@@ -39,6 +48,7 @@ schedule["CleanDate"] = pd.to_datetime(
     format="%m/%d/%Y",
     errors="coerce"
 )
+
 
 # =====================================================
 # SPLIT PLAYED VS REMAINING
@@ -57,11 +67,23 @@ if len(remaining_games) == 0:
         "No remaining games found — check date parsing or cutoff date."
     )
 
+
 # =====================================================
 # INITIALIZE STATS
 # =====================================================
 
 stats = initialize_stats(standings)
+
+
+# =====================================================
+# TRACK AVERAGE ELO
+# =====================================================
+
+elo_total = {
+    team: 0
+    for team in standings["Team"]
+}
+
 
 # =====================================================
 # MONTE CARLO LOOP
@@ -77,10 +99,17 @@ for sim in range(N_SIMULATIONS):
         ratings
     )
 
+
+    # Track Elo after simulated season
+    for team in ratings:
+        elo_total[team] += ratings[team]
+
+
     update_regular_season_stats(
         stats,
         final
     )
+
 
     stats = simulate_playoffs(
         final,
@@ -88,14 +117,29 @@ for sim in range(N_SIMULATIONS):
         stats
     )
 
+
+# =====================================================
+# COMPUTE AVERAGE ELO
+# =====================================================
+
+average_elo = {
+    team: round(
+        elo_total[team] / N_SIMULATIONS,
+        0
+    )
+    for team in elo_total
+}
+
+
 # =====================================================
 # COMPUTE SOS
 # =====================================================
 
 sos = compute_sos(
     remaining_games,
-    ratings
+    average_elo
 )
+
 
 # =====================================================
 # BUILD RESULTS
@@ -106,13 +150,25 @@ results = build_results(
     N_SIMULATIONS,
     sos,
     standings,
-    remaining_games
+    remaining_games,
+    average_elo
 )
+
+
+# =====================================================
+# OUTPUT
+# =====================================================
 
 print("\nPLAYOFF ODDS\n")
 print(results)
+
+print(results[["Team", "Record"]])
+
 
 results.to_csv(
     "Outputs/playoff_odds.csv",
     index=False
 )
+
+
+print("\nSimulation complete!")

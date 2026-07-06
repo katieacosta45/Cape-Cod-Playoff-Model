@@ -14,9 +14,9 @@ st.set_page_config(
 
 st.title("🏆 Cape Cod League Playoff Simulator")
 
-st.caption(
-    f"Updated: {datetime.now().strftime('%B %d, %Y')} | "
-    "1,000 Monte Carlo Simulations"
+st.markdown(
+    "**Created by Katie Acosta**  \n"
+    "Monte Carlo playoff projections using 1,000 season simulations."
 )
 
 st.divider()
@@ -26,6 +26,7 @@ st.divider()
 # =====================================================
 
 df = pd.read_csv("Outputs/playoff_odds.csv")
+
 
 # =====================================================
 # FORMAT NUMBERS (CLEAN DISPLAY)
@@ -39,11 +40,31 @@ odds_cols = [
 ]
 
 for col in odds_cols:
-    df[col] = df[col].astype(float)
+    df[col] = (
+        df[col]
+        .astype(float)
+        .clip(upper=99.9)
+    )
 
-df["GB"] = df["GB"].apply(
-    lambda x: "—" if float(x) == 0 else round(float(x), 1)
+
+# Format Elo
+
+if "Elo" in df.columns:
+    df["Elo"] = (
+        df["Elo"]
+        .astype(float)
+        .round(0)
+        .astype(int)
+    )
+
+
+df["GB"] = (
+    df["GB"]
+    .astype(float)
+    .round(1)
+    .map(lambda x: "—" if x == 0 else f"{x:.1f}")
 )
+
 
 # =====================================================
 # SORT BY RECORD
@@ -59,6 +80,7 @@ df = df.sort_values(
 
 df = df.drop(columns=["Wins", "Losses"])
 
+
 # =====================================================
 # SPLIT DIVISIONS
 # =====================================================
@@ -66,6 +88,7 @@ df = df.drop(columns=["Wins", "Losses"])
 cols = [
     "Team",
     "Record",
+    "Elo",
     "GB",
     "GR",
     "Playoff Odds",
@@ -74,28 +97,87 @@ cols = [
     "Championship Odds"
 ]
 
+
 east = df[df["Division"] == "East"][cols].copy()
 west = df[df["Division"] == "West"][cols].copy()
 
+
 # =====================================================
-# FORMAT DISPLAY (3 DECIMALS + PERCENT LOOK)
+# PLAYOFF CUT LINE + TABLE FORMATTING
 # =====================================================
 
-def format_table(d):
+def add_cut_line(df):
+    """
+    Inserts a separator row after the playoff teams.
+    """
+
+    cut_row = pd.DataFrame([{
+        "Team": "═ PLAYOFF CUT LINE ═",
+        "Record": "",
+        "Elo": "",
+        "GB": "",
+        "GR": "",
+        "Playoff Odds": None,
+        "Semis Odds": None,
+        "Finals Odds": None,
+        "Championship Odds": None
+    }])
+
+    return pd.concat(
+        [df.iloc[:4], cut_row, df.iloc[4:]],
+        ignore_index=True
+    )
+
+
+def highlight_rows(row):
+    """
+    Style playoff teams and cut line.
+    """
+
+    styles = [""] * len(row)
+
+    if row["Team"] == "═ PLAYOFF CUT LINE ═":
+        return [
+            "background-color: black; color: white; font-weight:bold; text-align:center;"
+        ] * len(row)
+
+
+    if row.name < 4:
+        styles[0] = (
+            "background-color:#1b5e20;"
+            "color:white;"
+            "font-weight:bold;"
+        )
+
+    return styles
+
+
+
+def format_table(df):
+
+    df = add_cut_line(df)
 
     return (
-        d.style
+        df.style
         .format({
-            "Playoff Odds": "{:.3f}",
-            "Semis Odds": "{:.3f}",
-            "Finals Odds": "{:.3f}",
-            "Championship Odds": "{:.3f}"
-        })
+            "Elo": "{}",
+            "GB": "{}",
+            "GR": "{}",
+            "Playoff Odds": "{:.1f}%",
+            "Semis Odds": "{:.1f}%",
+            "Finals Odds": "{:.1f}%",
+            "Championship Odds": "{:.1f}%"
+        }, na_rep="")
         .background_gradient(
             subset=odds_cols,
             cmap="RdYlGn"
         )
+        .apply(
+            highlight_rows,
+            axis=1
+        )
     )
+
 
 # =====================================================
 # EAST
@@ -109,6 +191,7 @@ st.dataframe(
     use_container_width=True
 )
 
+
 # =====================================================
 # WEST
 # =====================================================
@@ -121,12 +204,9 @@ st.dataframe(
     use_container_width=True
 )
 
+
 # =====================================================
 # CHAMPIONSHIP ODDS CHART
 # =====================================================
 
-st.subheader("🏆 Championship Odds")
-
-chart = df.set_index("Team")["Championship Odds"].sort_values(ascending=False)
-
-st.bar_chart(chart, use_container_width=True)
+# =====================================================

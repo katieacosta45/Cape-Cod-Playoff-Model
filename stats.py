@@ -5,9 +5,7 @@ import pandas as pd
 # =====================================================
 
 def initialize_stats(standings):
-    """
-    Creates dictionaries to track simulation results.
-    """
+    """Creates dictionaries to track simulation results."""
 
     teams = standings["Team"]
 
@@ -41,27 +39,18 @@ def update_regular_season_stats(stats, final):
         .reset_index(drop=True)
     )
 
-    for i, row in east.iterrows():
+    for conference in [east, west]:
 
-        team = row["Team"]
+        for i, row in conference.iterrows():
 
-        stats["wins"][team] += row["Wins"]
-        stats["points"][team] += row["Points"]
-        stats["seed_total"][team] += i + 1
+            team = row["Team"]
 
-        if i < 4:
-            stats["playoffs"][team] += 1
+            stats["wins"][team] += row["Wins"]
+            stats["points"][team] += row["Points"]
+            stats["seed_total"][team] += i + 1
 
-    for i, row in west.iterrows():
-
-        team = row["Team"]
-
-        stats["wins"][team] += row["Wins"]
-        stats["points"][team] += row["Points"]
-        stats["seed_total"][team] += i + 1
-
-        if i < 4:
-            stats["playoffs"][team] += 1
+            if i < 4:
+                stats["playoffs"][team] += 1
 
 
 # =====================================================
@@ -79,8 +68,8 @@ def compute_sos(schedule, ratings):
         opponents = []
 
         games = schedule[
-            (schedule["Home"] == team) |
-            (schedule["Away"] == team)
+            (schedule["Home"] == team)
+            | (schedule["Away"] == team)
         ]
 
         for _, game in games.iterrows():
@@ -105,23 +94,33 @@ def compute_sos(schedule, ratings):
 # BUILD RESULTS
 # =====================================================
 
-def build_results(stats, n_simulations, sos, standings, remaining_games):
+def build_results(stats, n_simulations, sos, standings, remaining_games, ratings):
 
     rows = []
 
-    # Count remaining games for every team
+    standings_lookup = standings.set_index("Team")
+
+
+    # -------------------------------------------------
+    # Games Remaining
+    # -------------------------------------------------
+
     games_remaining = {}
 
     for team in standings["Team"]:
 
         games_remaining[team] = len(
             remaining_games[
-                (remaining_games["Home"] == team) |
-                (remaining_games["Away"] == team)
+                (remaining_games["Home"] == team)
+                | (remaining_games["Away"] == team)
             ]
         )
 
-    # Calculate Games Back by division
+
+    # -------------------------------------------------
+    # Games Back
+    # -------------------------------------------------
+
     gb = {}
 
     for division in ["East", "West"]:
@@ -129,30 +128,46 @@ def build_results(stats, n_simulations, sos, standings, remaining_games):
         div = standings[standings["Division"] == division]
 
         leader_wins = div["Wins"].max()
-        leader_losses = div.loc[
-            div["Wins"] == leader_wins,
-            "Losses"
-        ].min()
+
+        leader_losses = (
+            div.loc[
+                div["Wins"] == leader_wins,
+                "Losses"
+            ].min()
+        )
 
         for _, row in div.iterrows():
 
-            games_back = (
-                (leader_wins - row["Wins"])
-                + (row["Losses"] - leader_losses)
-            ) / 2
+            gb[row["Team"]] = round(
+                (
+                    (leader_wins - row["Wins"])
+                    + (row["Losses"] - leader_losses)
+                )
+                / 2,
+                1
+            )
 
-            gb[row["Team"]] = games_back
 
-    # Build results table
-    for team in stats["wins"].keys():
+    # -------------------------------------------------
+    # Build Results
+    # -------------------------------------------------
+
+    for team in stats["wins"]:
 
         playoff = stats["playoffs"][team] / n_simulations
         semis = stats["semis"][team] / n_simulations
         finals = stats["finals"][team] / n_simulations
         titles = stats["titles"][team] / n_simulations
 
-        record = standings.set_index("Team").loc[team]
-        record_str = f"{int(record['Wins'])}-{int(record['Losses'])}"
+        record = standings_lookup.loc[team]
+
+        wins = int(record["Wins"])
+        losses = int(record["Losses"])
+
+        ties = int(record["Ties"]) if "Ties" in standings.columns else 0
+
+        record_str = f"{wins}-{losses}-{ties}"
+
 
         rows.append({
 
@@ -161,13 +176,17 @@ def build_results(stats, n_simulations, sos, standings, remaining_games):
 
             "Record": record_str,
 
+            # Average Elo after simulations
+            "Elo": round(ratings[team], 0),
+
             "GB": gb[team],
             "GR": games_remaining[team],
 
-            "Playoff Odds": round(playoff * 100, 2),
-            "Semis Odds": round(semis * 100, 2),
-            "Finals Odds": round(finals * 100, 2),
-            "Championship Odds": round(titles * 100, 2),
+            # Cap odds at 99.9% until clinched
+            "Playoff Odds": min(round(playoff * 100, 1), 99.9),
+            "Semis Odds": min(round(semis * 100, 1), 99.9),
+            "Finals Odds": min(round(finals * 100, 1), 99.9),
+            "Championship Odds": min(round(titles * 100, 1), 99.9),
 
             "Expected Wins": round(
                 stats["wins"][team] / n_simulations,
@@ -190,19 +209,21 @@ def build_results(stats, n_simulations, sos, standings, remaining_games):
             )
         })
 
+
     df = pd.DataFrame(rows)
 
-    # Show East first
+
     df["Division"] = pd.Categorical(
         df["Division"],
         categories=["East", "West"],
         ordered=True
     )
 
-    # Sort by division, then championship odds
+
     df = df.sort_values(
         ["Division", "Championship Odds"],
         ascending=[True, False]
     ).reset_index(drop=True)
+
 
     return df

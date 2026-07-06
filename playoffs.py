@@ -4,8 +4,25 @@ import random
 # ----------------------------
 # SINGLE GAME SIM
 # ----------------------------
-def simulate_game(team_a, team_b, ratings):
-    prob_a = ratings[team_a] / (ratings[team_a] + ratings[team_b])
+def simulate_game(team_a, team_b, ratings, home_team=None):
+    """
+    Simulates one playoff game using Elo.
+    """
+
+    rating_a = ratings[team_a]
+    rating_b = ratings[team_b]
+
+    # Apply playoff home field advantage
+    if home_team == team_a:
+        rating_a += 50
+
+    elif home_team == team_b:
+        rating_b += 50
+
+
+    prob_a = 1 / (
+        1 + 10 ** ((rating_b - rating_a) / 400)
+    )
 
     return team_a if random.random() < prob_a else team_b
 
@@ -15,19 +32,36 @@ def simulate_game(team_a, team_b, ratings):
 # ----------------------------
 def simulate_series(team1, team2, ratings):
 
-    wins1 = 0
-    wins2 = 0
+    wins = {
+        team1: 0,
+        team2: 0
+    }
 
-    while wins1 < 2 and wins2 < 2:
+    games = [
+        (team1, team2), # Game 1 team1 home
+        (team2, team1), # Game 2 team2 home
+        (team1, team2)  # Game 3 team1 home
+    ]
 
-        winner = simulate_game(team1, team2, ratings)
+    for home, away in games:
 
-        if winner == team1:
-            wins1 += 1
-        else:
-            wins2 += 1
+        winner = simulate_game(
+            home,
+            away,
+            ratings,
+            home_team=home
+        )
 
-    return team1 if wins1 > wins2 else team2
+        wins[winner] += 1
+
+        if wins[team1] == 2 or wins[team2] == 2:
+            break
+
+    return (
+        team1 
+        if wins[team1] > wins[team2]
+        else team2
+    )
 
 
 # ----------------------------
