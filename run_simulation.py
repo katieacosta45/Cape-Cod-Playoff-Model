@@ -169,6 +169,39 @@ results.to_csv(
     "Outputs/playoff_odds.csv",
     index=False
 )
+# =====================================================
+# SAVE HISTORICAL RESULTS
+# =====================================================
+
+from datetime import datetime
+
+history = results[
+    [
+        "Team",
+        "Playoff Odds",
+        "Semis Odds",
+        "Finals Odds",
+        "Championship Odds",
+        "Elo"
+    ]
+].copy()
+
+history["Date"] = datetime.now().strftime("%Y-%m-%d")
+
+history_file = "Outputs/playoff_history.csv"
+
+try:
+    old_history = pd.read_csv(history_file)
+    history = pd.concat(
+        [old_history, history],
+        ignore_index=True
+    )
+
+except FileNotFoundError:
+    pass
 
 
-print("\nSimulation complete!")
+history.to_csv(
+    history_file,
+    index=False
+)

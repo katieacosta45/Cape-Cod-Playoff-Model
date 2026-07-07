@@ -12,11 +12,18 @@ st.set_page_config(
     layout="wide"
 )
 
+# =====================================================
+# TITLE + LAST UPDATED
+# =====================================================
+
+updated_date = datetime.now().strftime("%B %d, %Y")
+
 st.title("🏆 Cape Cod League Playoff Simulator")
 
 st.markdown(
-    "**Created by Katie Acosta**  \n"
-    "Monte Carlo playoff projections using 1,000 season simulations."
+    f"**Created by Katie Acosta**  \n"
+    f"Monte Carlo playoff projections using 1,000 season simulations.  \n"
+    f"**Last Updated: {updated_date}**"
 )
 
 st.divider()
@@ -208,5 +215,65 @@ st.dataframe(
 # =====================================================
 # CHAMPIONSHIP ODDS CHART
 # =====================================================
-
 # =====================================================
+# PLAYOFF ODDS HISTORY
+# =====================================================
+
+st.divider()
+
+st.subheader("📈 Playoff Odds Over Time")
+
+history = pd.read_csv(
+    "Outputs/playoff_history.csv"
+)
+
+# Drop early snapshot — misleading this early in the season
+history = history[history["Date"] != "2026-06-15"]
+
+# Force proper chronological order regardless of string format
+history["Date"] = history["Date"] = pd.to_datetime(history["Date"], format="mixed")
+history = history.sort_values("Date")
+
+team_selected = st.multiselect(
+    "Select Teams",
+    history["Team"].unique(),
+    default=list(history["Team"].unique())
+)
+
+chart_data = (
+    history[
+        history["Team"].isin(team_selected)
+    ]
+    .pivot(
+        index="Date",
+        columns="Team",
+        values="Playoff Odds"
+    )
+)
+
+st.line_chart(
+    chart_data,
+    use_container_width=True,
+    height=600
+)
+# =====================================================
+# =====================================================
+# PLAYOFF FORMAT EXPLANATION
+# =====================================================
+
+st.divider()
+
+st.subheader("ℹ️ Playoff Format")
+
+st.markdown(
+    """
+    The top four teams in each division qualify for the playoffs.
+
+    All playoff rounds (Quarterfinals, Semifinals, and Championship Series) 
+    are **best-of-three series**. The higher seed hosts **Games 1 and 3**, 
+    while the lower seed hosts **Game 2**.
+
+    Playoff projections are generated using Monte Carlo simulations based on 
+    team Elo ratings, remaining regular season games, and playoff series outcomes.
+    """
+)
