@@ -298,7 +298,13 @@ chart = (
     .encode(
         x=alt.X(
             "Date:T",
-            axis=alt.Axis(values=actual_dates, format="%b %d", title="Date")
+            axis=alt.Axis(
+                values=actual_dates,
+                format="%b %d",
+                title="Date",
+                labelAngle=-45,
+                labelOverlap=False
+            )
         ),
         y=alt.Y("Playoff Odds:Q", title="Playoff Odds (%)"),
         color=alt.Color(
