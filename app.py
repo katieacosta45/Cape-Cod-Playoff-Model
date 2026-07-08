@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import altair as alt
 from datetime import datetime
 
 # =====================================================
@@ -27,6 +28,40 @@ st.markdown(
 )
 
 st.divider()
+
+# =====================================================
+# TEAM COLORS
+# =====================================================
+# These are best-effort estimates, not scraped from an official source --
+# capecodleague.com only exposes team logos as images (no CSS/text color
+# values in the page), and there's no public verified brand-color database
+# for CCBL teams. For exact hex codes: save a team's logo image and run it
+# through a color picker tool (e.g. imagecolorpicker.com), then update below.
+
+TEAM_COLORS = {
+    "Bourne":          "#8B0000",
+    "Brewster":        "#4FB8AF",
+    "Chatham":         "#8B0000",
+    "Cotuit":          "#B31942",
+    "Falmouth":        "#002F6C",
+    "Harwich":         "#D2691E",
+    "Hyannis":         "#002868",
+    "Orleans":         "#CC5500",
+    "Wareham":         "#003087",
+    "Yarmouth-Dennis": "#BA0C2F",
+}
+
+
+def color_team_names(val):
+    """
+    Colors the Team column text to match each franchise's color.
+    Leaves non-team values (like the playoff cut line label) untouched
+    so it doesn't clobber that row's existing black/white styling.
+    """
+    if val not in TEAM_COLORS:
+        return ""
+    return f"color: {TEAM_COLORS[val]}; font-weight: bold;"
+
 
 # =====================================================
 # LOAD DATA
@@ -150,11 +185,7 @@ def highlight_rows(row):
 
 
     if row.name < 4:
-        styles[0] = (
-            "background-color:#1b5e20;"
-            "color:white;"
-            "font-weight:bold;"
-        )
+        styles[0] = "font-weight:bold;"
 
     return styles
 
@@ -182,6 +213,10 @@ def format_table(df):
         .apply(
             highlight_rows,
             axis=1
+        )
+        .map(
+            color_team_names,
+            subset=["Team"]
         )
     )
 
@@ -213,9 +248,6 @@ st.dataframe(
 
 
 # =====================================================
-# CHAMPIONSHIP ODDS CHART
-# =====================================================
-# =====================================================
 # PLAYOFF ODDS HISTORY
 # =====================================================
 
@@ -227,11 +259,12 @@ history = pd.read_csv(
     "Outputs/playoff_history.csv"
 )
 
-# Drop early snapshot — misleading this early in the season
+# Drop early snapshot -- misleading this early in the season
 history = history[history["Date"] != "2026-06-15"]
 
 # Force proper chronological order regardless of string format
-history["Date"] = history["Date"] = pd.to_datetime(history["Date"], format="mixed")
+# (handles mixed date formats, e.g. "07/06/2026" vs "2026-07-07")
+history["Date"] = pd.to_datetime(history["Date"], format="mixed")
 history = history.sort_values("Date")
 
 team_selected = st.multiselect(
@@ -240,23 +273,44 @@ team_selected = st.multiselect(
     default=list(history["Team"].unique())
 )
 
-chart_data = (
-    history[
-        history["Team"].isin(team_selected)
-    ]
-    .pivot(
-        index="Date",
-        columns="Team",
-        values="Playoff Odds"
+filtered = history[history["Team"].isin(team_selected)]
+
+# Only put tick marks on dates we actually have data for -- this stops a
+# straight line drawn between, say, 6/29 and 7/6 from visually implying
+# daily granularity that isn't there. Once daily updates are flowing,
+# this will naturally show a tick per day.
+actual_dates = sorted(filtered["Date"].unique())
+
+chart = (
+    alt.Chart(filtered)
+    .mark_line(point=True)
+    .encode(
+        x=alt.X(
+            "Date:T",
+            axis=alt.Axis(values=actual_dates, format="%b %d", title="Date")
+        ),
+        y=alt.Y("Playoff Odds:Q", title="Playoff Odds (%)"),
+        color=alt.Color(
+            "Team:N",
+            scale=alt.Scale(
+                domain=list(TEAM_COLORS.keys()),
+                range=list(TEAM_COLORS.values())
+            ),
+            legend=alt.Legend(title="Team")
+        ),
+        tooltip=["Team", "Date:T", "Playoff Odds"]
     )
+    .properties(height=500)
 )
 
-st.line_chart(
-    chart_data,
-    use_container_width=True,
-    height=600
+st.altair_chart(chart, use_container_width=True)
+
+st.caption(
+    "Snapshots were taken weekly through July 6 — lines between those points "
+    "are straight-line estimates, not daily data. Starting July 7, odds update daily."
 )
-# =====================================================
+
+
 # =====================================================
 # PLAYOFF FORMAT EXPLANATION
 # =====================================================

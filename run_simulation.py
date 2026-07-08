@@ -2,6 +2,11 @@ import stats
 print(stats.__file__)
 
 import pandas as pd
+import random
+import numpy as np
+
+random.seed(42)
+np.random.seed(42)
 
 from simulator import simulate_season
 from ratings import build_ratings
@@ -48,6 +53,15 @@ schedule["CleanDate"] = pd.to_datetime(
     format="%m/%d/%Y",
     errors="coerce"
 )
+
+# ---- DIAGNOSTIC: flag any rows that failed to parse a date ----
+bad_dates = schedule[schedule["CleanDate"].isna()]
+if len(bad_dates) > 0:
+    print(f"\n⚠️  {len(bad_dates)} schedule row(s) failed date parsing "
+          f"and will be silently excluded from the simulation:")
+    print(bad_dates[["Date"]])
+    print()
+# -----------------------------------------------------------------
 
 
 # =====================================================
@@ -188,10 +202,18 @@ history = results[
 
 history["Date"] = datetime.now().strftime("%Y-%m-%d")
 
+today_str = history["Date"].iloc[0]
+
 history_file = "Outputs/playoff_history.csv"
 
 try:
     old_history = pd.read_csv(history_file)
+
+    # Drop any existing row(s) for today's date so re-running the
+    # simulation multiple times in one day overwrites today's point
+    # instead of stacking duplicate dots on the chart
+    old_history = old_history[old_history["Date"] != today_str]
+
     history = pd.concat(
         [old_history, history],
         ignore_index=True

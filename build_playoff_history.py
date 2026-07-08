@@ -28,6 +28,11 @@ Run it with:  python build_playoff_history.py
 """
 
 import pandas as pd
+import random
+import numpy as np
+
+random.seed(42)
+np.random.seed(42)
 
 from simulator import simulate_season
 from ratings import build_ratings
