@@ -262,6 +262,17 @@ history = pd.read_csv(
 # Drop early snapshot -- misleading this early in the season
 history = history[history["Date"] != "2026-06-15"]
 
+# Opening Day marker: before any games are played, each team's naive
+# playoff odds are simply 4 of 5 divisional spots = 80%. This isn't a
+# simulation output, just a sensible fixed starting point for the chart.
+opening_day = pd.DataFrame({
+    "Team": history["Team"].unique(),
+    "Playoff Odds": 80.0,
+    "Date": "2026-06-13"
+})
+
+history = pd.concat([opening_day, history], ignore_index=True)
+
 # Force proper chronological order regardless of string format
 # (handles mixed date formats, e.g. "07/06/2026" vs "2026-07-07")
 history["Date"] = pd.to_datetime(history["Date"], format="mixed")
