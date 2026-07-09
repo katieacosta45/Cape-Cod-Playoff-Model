@@ -1,7 +1,7 @@
 import pandas as pd
 
 BASE_ELO = 1500
-SCALE = 300
+SCALE = 500
 
 
 def build_ratings(standings):

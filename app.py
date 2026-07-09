@@ -120,6 +120,55 @@ df = df.sort_values(
     ascending=[True, False, True]
 )
 
+
+# =====================================================
+# MAGIC NUMBER (CLINCH / ELIMINATION TRACKER)
+# =====================================================
+# For each team, finds the key rival at the 4-vs-5 cutoff line in their
+# division and computes how many more wins are needed so that even if
+# that rival wins out the rest of their games, the team still finishes
+# ahead. "Clinched" = already mathematically guaranteed a spot.
+# "Eliminated" = can't catch the 4th-place team even by winning out.
+
+def compute_magic_numbers(df):
+
+    df = df.copy()
+    df["Magic Number"] = None
+
+    for division in df["Division"].unique():
+
+        div = df[df["Division"] == division].sort_values(
+            ["Wins", "Losses"], ascending=[False, True]
+        ).reset_index(drop=True)
+
+        if len(div) < 5:
+            continue  # need a clean 5-team cutoff for this logic
+
+        fourth = div.iloc[3]
+        fifth = div.iloc[4]
+
+        for i, row in div.iterrows():
+
+            games_remaining = row["GR"]
+            rival = fifth if i < 4 else fourth
+
+            rival_max_wins = rival["Wins"] + rival["GR"]
+            needed = rival_max_wins - row["Wins"] + 1
+
+            if needed <= 0:
+                magic = "Clinched"
+            elif needed > games_remaining:
+                magic = ""
+            else:
+                magic = int(needed)
+
+            df.loc[df["Team"] == row["Team"], "Magic Number"] = magic
+
+    return df
+
+
+df = compute_magic_numbers(df)
+
 df = df.drop(columns=["Wins", "Losses"])
 
 
@@ -133,6 +182,7 @@ cols = [
     "Elo",
     "GB",
     "GR",
+    "Magic Number",
     "Playoff Odds",
     "Semis Odds",
     "Finals Odds",
@@ -159,6 +209,7 @@ def add_cut_line(df):
         "Elo": "",
         "GB": "",
         "GR": "",
+        "Magic Number": "",
         "Playoff Odds": None,
         "Semis Odds": None,
         "Finals Odds": None,
