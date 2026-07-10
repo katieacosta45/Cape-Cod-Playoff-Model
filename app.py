@@ -375,7 +375,7 @@ st.altair_chart(chart, use_container_width=True)
 
 st.caption(
     "Snapshots were taken weekly through July 6 — lines between those points "
-    "are straight-line estimates, not daily data. Starting July 7, odds update daily."
+    "are straight-line estimates, not daily data. Starting July 10, odds update daily."
 )
 
 
