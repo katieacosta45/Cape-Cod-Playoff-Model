@@ -375,7 +375,61 @@ st.altair_chart(chart, use_container_width=True)
 
 st.caption(
     "Snapshots were taken weekly through July 6 — lines between those points "
-    "are straight-line estimates, not daily data. Starting July 10, odds update daily."
+    "are straight-line estimates, not daily data. Starting July 7, odds update daily."
+)
+
+
+# =====================================================
+# CHAMPIONSHIP ODDS HISTORY
+# =====================================================
+
+st.divider()
+
+st.subheader("🏆 Championship Odds Over Time")
+
+# Reuse the same underlying history data (already loaded above), just
+# start the window at 7/11 rather than opening day -- championship odds
+# are noisy/uninformative far out from the playoffs, so there's no value
+# in charting them from June.
+champ_history = history[history["Date"] >= "2026-07-11"]
+
+champ_filtered = champ_history[champ_history["Team"].isin(team_selected)]
+
+champ_dates = sorted(champ_filtered["Date"].unique())
+
+champ_chart = (
+    alt.Chart(champ_filtered)
+    .mark_line(point=True)
+    .encode(
+        x=alt.X(
+            "Date:T",
+            axis=alt.Axis(
+                values=champ_dates,
+                format="%b %d",
+                title="Date",
+                labelAngle=-45,
+                labelOverlap=False
+            )
+        ),
+        y=alt.Y("Championship Odds:Q", title="Championship Odds (%)"),
+        color=alt.Color(
+            "Team:N",
+            scale=alt.Scale(
+                domain=list(TEAM_COLORS.keys()),
+                range=list(TEAM_COLORS.values())
+            ),
+            legend=alt.Legend(title="Team")
+        ),
+        tooltip=["Team", "Date:T", "Championship Odds"]
+    )
+    .properties(height=500)
+)
+
+st.altair_chart(champ_chart, use_container_width=True)
+
+st.caption(
+    "Championship odds become meaningful closer to the playoffs, so this chart "
+    "starts July 11 rather than from opening day."
 )
 
 
