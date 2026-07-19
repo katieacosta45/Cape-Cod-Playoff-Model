@@ -82,10 +82,7 @@ def compute_sos(schedule, ratings):
 
             opponents.append(ratings[opponent])
 
-        if opponents:
-            sos[team] = sum(opponents) / len(opponents)
-        else:
-            sos[team] = 0
+        sos[team] = round(sum(opponents) / len(opponents), 1) if opponents else 0
 
     return sos
 
@@ -94,12 +91,17 @@ def compute_sos(schedule, ratings):
 # BUILD RESULTS
 # =====================================================
 
+CLINCHED = {
+    "Yarmouth-Dennis"
+}
+
+ELIMINATED = set()
+
 def build_results(stats, n_simulations, sos, standings, remaining_games, ratings):
 
     rows = []
 
     standings_lookup = standings.set_index("Team")
-
 
     # -------------------------------------------------
     # Games Remaining
@@ -115,7 +117,6 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
                 | (remaining_games["Away"] == team)
             ]
         )
-
 
     # -------------------------------------------------
     # Games Back
@@ -142,11 +143,9 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
                 (
                     (leader_wins - row["Wins"])
                     + (row["Losses"] - leader_losses)
-                )
-                / 2,
+                ) / 2,
                 1
             )
-
 
     # -------------------------------------------------
     # Build Results
@@ -159,34 +158,57 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
         finals = stats["finals"][team] / n_simulations
         titles = stats["titles"][team] / n_simulations
 
+        playoff_pct = round(playoff * 100, 1)
+        semis_pct = round(semis * 100, 1)
+        finals_pct = round(finals * 100, 1)
+        titles_pct = round(titles * 100, 1)
+
+        # -------------------------------------------------
+        # Manual clinch / elimination overrides
+        # -------------------------------------------------
+
+        if team in CLINCHED:
+            playoff_pct = 100.0
+            status = "✓ Clinched"
+
+        elif team in ELIMINATED:
+            playoff_pct = 0.0
+            status = "✗ Eliminated"
+
+        elif playoff_pct >= 100.0:
+            status = "✓ Clinched"
+
+        elif playoff_pct <= 0.0:
+            status = "✗ Eliminated"
+
+        else:
+            status = ""
+
         record = standings_lookup.loc[team]
 
         wins = int(record["Wins"])
         losses = int(record["Losses"])
-
         ties = int(record["Ties"]) if "Ties" in standings.columns else 0
 
         record_str = f"{wins}-{losses}-{ties}"
-
 
         rows.append({
 
             "Team": team,
             "Division": stats["division"][team],
+            "Status": status,
 
             "Record": record_str,
 
-            # Average Elo after simulations
             "Elo": round(ratings[team], 0),
 
             "GB": gb[team],
             "GR": games_remaining[team],
 
-            # Cap odds at 99.9% until clinched
-            "Playoff Odds": min(round(playoff * 100, 1), 99.9),
-            "Semis Odds": min(round(semis * 100, 1), 99.9),
-            "Finals Odds": min(round(finals * 100, 1), 99.9),
-            "Championship Odds": min(round(titles * 100, 1), 99.9),
+            "Playoff Odds": playoff_pct,
+            "Semis Odds": semis_pct,
+            "Finals Odds": finals_pct,
+            "Championship Odds": titles_pct,
 
             "Expected Wins": round(
                 stats["wins"][team] / n_simulations,
@@ -203,15 +225,11 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
                 2
             ),
 
-            "SOS": round(
-                sos.get(team, 0),
-                1
-            )
+            "SOS": sos.get(team, 0)
+
         })
 
-
     df = pd.DataFrame(rows)
-
 
     df["Division"] = pd.Categorical(
         df["Division"],
@@ -219,11 +237,9 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
         ordered=True
     )
 
-
     df = df.sort_values(
         ["Division", "Championship Odds"],
         ascending=[True, False]
     ).reset_index(drop=True)
-
 
     return df
