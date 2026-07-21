@@ -109,15 +109,18 @@ df["GB"] = (
 
 
 # =====================================================
-# SORT BY RECORD
+# SORT BY RECORD (points-based: win = 2, tie = 1)
 # =====================================================
 
-df["Wins"] = df["Record"].str.split("-").str[0].astype(int)
-df["Losses"] = df["Record"].str.split("-").str[1].astype(int)
+record_parts = df["Record"].str.split("-")
+df["Wins"] = record_parts.str[0].astype(int)
+df["Losses"] = record_parts.str[1].astype(int)
+df["Ties"] = record_parts.apply(lambda parts: int(parts[2]) if len(parts) > 2 else 0)
+df["Points"] = df["Wins"] * 2 + df["Ties"]
 
 df = df.sort_values(
-    ["Division", "Wins", "Losses"],
-    ascending=[True, False, True]
+    ["Division", "Points", "Wins"],
+    ascending=[True, False, False]
 )
 
 
@@ -125,10 +128,11 @@ df = df.sort_values(
 # MAGIC NUMBER (CLINCH / ELIMINATION TRACKER)
 # =====================================================
 # For each team, finds the key rival at the 4-vs-5 cutoff line in their
-# division and computes how many more wins are needed so that even if
-# that rival wins out the rest of their games, the team still finishes
-# ahead. "Clinched" = already mathematically guaranteed a spot.
-# "Eliminated" = can't catch the 4th-place team even by winning out.
+# division and computes how many more POINTS are needed (win = 2, tie = 1,
+# matching the league's standings system) so that even if that rival wins
+# out the rest of their games, the team still finishes ahead. "Clinched" =
+# already mathematically guaranteed a spot. Blank = can't catch the
+# 4th-place team even by winning out.
 
 def compute_magic_numbers(df):
 
@@ -138,7 +142,7 @@ def compute_magic_numbers(df):
     for division in df["Division"].unique():
 
         div = df[df["Division"] == division].sort_values(
-            ["Wins", "Losses"], ascending=[False, True]
+            ["Points", "Wins"], ascending=[False, False]
         ).reset_index(drop=True)
 
         if len(div) < 5:
@@ -152,12 +156,16 @@ def compute_magic_numbers(df):
             games_remaining = row["GR"]
             rival = fifth if i < 4 else fourth
 
-            rival_max_wins = rival["Wins"] + rival["GR"]
-            needed = rival_max_wins - row["Wins"] + 1
+            # Rival's best case: they win every remaining game (2 points each)
+            rival_max_points = rival["Points"] + rival["GR"] * 2
+            needed = rival_max_points - row["Points"] + 1
+
+            # This team's best case: they also win every remaining game
+            max_possible_gain = games_remaining * 2
 
             if needed <= 0:
                 magic = "Clinched"
-            elif needed > games_remaining:
+            elif needed > max_possible_gain:
                 magic = ""
             else:
                 magic = int(needed)
@@ -169,7 +177,12 @@ def compute_magic_numbers(df):
 
 df = compute_magic_numbers(df)
 
-df = df.drop(columns=["Wins", "Losses"])
+# Once a team has mathematically clinched, show a clean 100% instead of
+# the 99.9% cap applied above (that cap exists to avoid implying false
+# certainty from simulation variance -- but a clinched team IS certain).
+df.loc[df["Magic Number"] == "Clinched", "Playoff Odds"] = 100.0
+
+df = df.drop(columns=["Wins", "Losses", "Ties", "Points"])
 
 
 # =====================================================
