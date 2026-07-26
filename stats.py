@@ -14,6 +14,7 @@ def initialize_stats(standings):
         "semis": {team: 0 for team in teams},
         "finals": {team: 0 for team in teams},
         "titles": {team: 0 for team in teams},
+        "top_seed": {team: 0 for team in teams},
         "wins": {team: 0 for team in teams},
         "points": {team: 0 for team in teams},
         "seed_total": {team: 0 for team in teams},
@@ -51,6 +52,9 @@ def update_regular_season_stats(stats, final):
 
             if i < 4:
                 stats["playoffs"][team] += 1
+
+            if i == 0:
+                stats["top_seed"][team] += 1
 
 
 # =====================================================
@@ -119,35 +123,6 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
         )
 
     # -------------------------------------------------
-    # Games Back
-    # -------------------------------------------------
-
-    gb = {}
-
-    for division in ["East", "West"]:
-
-        div = standings[standings["Division"] == division]
-
-        leader_wins = div["Wins"].max()
-
-        leader_losses = (
-            div.loc[
-                div["Wins"] == leader_wins,
-                "Losses"
-            ].min()
-        )
-
-        for _, row in div.iterrows():
-
-            gb[row["Team"]] = round(
-                (
-                    (leader_wins - row["Wins"])
-                    + (row["Losses"] - leader_losses)
-                ) / 2,
-                1
-            )
-
-    # -------------------------------------------------
     # Build Results
     # -------------------------------------------------
 
@@ -157,11 +132,13 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
         semis = stats["semis"][team] / n_simulations
         finals = stats["finals"][team] / n_simulations
         titles = stats["titles"][team] / n_simulations
+        top_seed = stats["top_seed"][team] / n_simulations
 
         playoff_pct = round(playoff * 100, 1)
         semis_pct = round(semis * 100, 1)
         finals_pct = round(finals * 100, 1)
         titles_pct = round(titles * 100, 1)
+        top_seed_pct = round(top_seed * 100, 1)
 
         # -------------------------------------------------
         # Manual clinch / elimination overrides
@@ -192,6 +169,8 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
 
         record_str = f"{wins}-{losses}-{ties}"
 
+        current_points = wins * 2 + ties
+
         rows.append({
 
             "Team": team,
@@ -202,10 +181,11 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
 
             "Elo": round(ratings[team], 0),
 
-            "GB": gb[team],
+            "Points": current_points,
             "GR": games_remaining[team],
 
             "Playoff Odds": playoff_pct,
+            "#1 Seed Odds": top_seed_pct,
             "Semis Odds": semis_pct,
             "Finals Odds": finals_pct,
             "Championship Odds": titles_pct,

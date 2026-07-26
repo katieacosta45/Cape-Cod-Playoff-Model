@@ -76,6 +76,7 @@ df = pd.read_csv("Outputs/playoff_odds.csv")
 
 odds_cols = [
     "Playoff Odds",
+    "#1 Seed Odds",
     "Semis Odds",
     "Finals Odds",
     "Championship Odds"
@@ -100,23 +101,20 @@ if "Elo" in df.columns:
     )
 
 
-df["GB"] = (
-    df["GB"]
-    .astype(float)
-    .round(1)
-    .map(lambda x: "—" if x == 0 else f"{x:.1f}")
-)
+df["Points"] = df["Points"].astype(int)
 
 
 # =====================================================
 # SORT BY RECORD (points-based: win = 2, tie = 1)
 # =====================================================
+# Note: "Points" now comes directly from the simulation output (stats.py),
+# so we don't recompute it here -- just pull Wins/Losses/Ties out of
+# Record for the magic-number tiebreak logic further down.
 
 record_parts = df["Record"].str.split("-")
 df["Wins"] = record_parts.str[0].astype(int)
 df["Losses"] = record_parts.str[1].astype(int)
 df["Ties"] = record_parts.apply(lambda parts: int(parts[2]) if len(parts) > 2 else 0)
-df["Points"] = df["Wins"] * 2 + df["Ties"]
 
 df = df.sort_values(
     ["Division", "Points", "Wins"],
@@ -182,7 +180,7 @@ df = compute_magic_numbers(df)
 # certainty from simulation variance -- but a clinched team IS certain).
 df.loc[df["Magic Number"] == "Clinched", "Playoff Odds"] = 100.0
 
-df = df.drop(columns=["Wins", "Losses", "Ties", "Points"])
+df = df.drop(columns=["Wins", "Losses", "Ties"])
 
 
 # =====================================================
@@ -193,10 +191,11 @@ cols = [
     "Team",
     "Record",
     "Elo",
-    "GB",
+    "Points",
     "GR",
     "Magic Number",
     "Playoff Odds",
+    "#1 Seed Odds",
     "Semis Odds",
     "Finals Odds",
     "Championship Odds"
@@ -220,10 +219,11 @@ def add_cut_line(df):
         "Team": "═ PLAYOFF CUT LINE ═",
         "Record": "",
         "Elo": "",
-        "GB": "",
+        "Points": "",
         "GR": "",
         "Magic Number": "",
         "Playoff Odds": None,
+        "#1 Seed Odds": None,
         "Semis Odds": None,
         "Finals Odds": None,
         "Championship Odds": None
@@ -263,9 +263,10 @@ def format_table(df):
         df.style
         .format({
             "Elo": "{}",
-            "GB": "{}",
+            "Points": "{}",
             "GR": "{}",
             "Playoff Odds": "{:.1f}%",
+            "#1 Seed Odds": "{:.1f}%",
             "Semis Odds": "{:.1f}%",
             "Finals Odds": "{:.1f}%",
             "Championship Odds": "{:.1f}%"
