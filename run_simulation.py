@@ -24,7 +24,7 @@ from playoffs import simulate_playoffs
 # =====================================================
 
 N_SIMULATIONS = 1000
-CUTOFF_DATE = "2026-08-01"
+CUTOFF_DATE = "2026-08-03"
 
 
 # =====================================================
@@ -77,8 +77,9 @@ remaining_games = schedule[
 print("Remaining games:", len(remaining_games))
 
 if len(remaining_games) == 0:
-    raise ValueError(
-        "No remaining games found — check date parsing or cutoff date."
+    print(
+        "\n✅ Regular season complete — no remaining games to simulate. "
+        "Standings are final; playoff series will still be simulated.\n"
     )
 
 

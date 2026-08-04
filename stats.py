@@ -1,6 +1,55 @@
 import pandas as pd
 
 # =====================================================
+# MANUAL HEAD-TO-HEAD TIEBREAKERS
+# =====================================================
+# When two teams are tied on Points, the league breaks the tie by
+# head-to-head record. There's no per-game results log in this pipeline
+# (schedule.csv only has dates, not outcomes) to compute this
+# automatically, so ties are recorded manually here as they're confirmed.
+# Add a new entry as {frozenset({"Team A", "Team B"}): "Team A"} meaning
+# Team A wins the tiebreaker over Team B.
+
+TIEBREAK_WINNERS = {
+    frozenset({"Cotuit", "Wareham"}): "Cotuit",
+}
+
+
+def _tiebreak_score(team, division_df):
+    """
+    Counts how many head-to-head tiebreaker wins `team` has against
+    other teams it's currently tied with on Points. Used as a sort
+    tiebreaker so a manually-confirmed head-to-head result overrides
+    the arbitrary order pandas would otherwise fall back on.
+    """
+    points = division_df.loc[division_df["Team"] == team, "Points"].iloc[0]
+    tied_teams = division_df.loc[division_df["Points"] == points, "Team"].tolist()
+
+    score = 0
+    for other in tied_teams:
+        if other == team:
+            continue
+        pair = frozenset({team, other})
+        if TIEBREAK_WINNERS.get(pair) == team:
+            score += 1
+
+    return score
+
+
+def _sort_with_tiebreak(division_df):
+    division_df = division_df.copy()
+    division_df["TiebreakScore"] = division_df["Team"].apply(
+        lambda t: _tiebreak_score(t, division_df)
+    )
+    return (
+        division_df
+        .sort_values(["Points", "TiebreakScore", "Wins"], ascending=False)
+        .drop(columns=["TiebreakScore"])
+        .reset_index(drop=True)
+    )
+
+
+# =====================================================
 # INITIALIZE STATS
 # =====================================================
 
@@ -14,7 +63,6 @@ def initialize_stats(standings):
         "semis": {team: 0 for team in teams},
         "finals": {team: 0 for team in teams},
         "titles": {team: 0 for team in teams},
-        "top_seed": {team: 0 for team in teams},
         "wins": {team: 0 for team in teams},
         "points": {team: 0 for team in teams},
         "seed_total": {team: 0 for team in teams},
@@ -28,17 +76,8 @@ def initialize_stats(standings):
 
 def update_regular_season_stats(stats, final):
 
-    east = (
-        final[final["Division"] == "East"]
-        .sort_values(["Points", "Wins"], ascending=False)
-        .reset_index(drop=True)
-    )
-
-    west = (
-        final[final["Division"] == "West"]
-        .sort_values(["Points", "Wins"], ascending=False)
-        .reset_index(drop=True)
-    )
+    east = _sort_with_tiebreak(final[final["Division"] == "East"])
+    west = _sort_with_tiebreak(final[final["Division"] == "West"])
 
     for conference in [east, west]:
 
@@ -52,9 +91,6 @@ def update_regular_season_stats(stats, final):
 
             if i < 4:
                 stats["playoffs"][team] += 1
-
-            if i == 0:
-                stats["top_seed"][team] += 1
 
 
 # =====================================================
@@ -132,13 +168,11 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
         semis = stats["semis"][team] / n_simulations
         finals = stats["finals"][team] / n_simulations
         titles = stats["titles"][team] / n_simulations
-        top_seed = stats["top_seed"][team] / n_simulations
 
         playoff_pct = round(playoff * 100, 1)
         semis_pct = round(semis * 100, 1)
         finals_pct = round(finals * 100, 1)
         titles_pct = round(titles * 100, 1)
-        top_seed_pct = round(top_seed * 100, 1)
 
         # -------------------------------------------------
         # Manual clinch / elimination overrides
@@ -185,7 +219,6 @@ def build_results(stats, n_simulations, sos, standings, remaining_games, ratings
             "GR": games_remaining[team],
 
             "Playoff Odds": playoff_pct,
-            "#1 Seed Odds": top_seed_pct,
             "Semis Odds": semis_pct,
             "Finals Odds": finals_pct,
             "Championship Odds": titles_pct,

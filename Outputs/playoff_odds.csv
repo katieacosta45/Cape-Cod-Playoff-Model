@@ -1,11 +1,11 @@
-Team,Division,Status,Record,Elo,Points,GR,Playoff Odds,#1 Seed Odds,Semis Odds,Finals Odds,Championship Odds,Expected Wins,Expected Points,Average Seed,SOS
-Yarmouth-Dennis,East,✓ Clinched,28-10-1,1592.0,57,1,100.0,100.0,71.5,46.1,32.5,28.64,58.35,1.0,1495.0
-Brewster,East,✓ Clinched,25-11-3,1572.0,53,1,100.0,0.0,66.9,31.4,21.2,25.52,54.09,2.0,1505.0
-Chatham,East,✓ Clinched,17-18-3,1495.0,37,2,100.0,0.0,28.9,11.7,7.0,17.79,38.71,3.92,1514.5
-Harwich,East,✓ Clinched,20-19-0,1505.0,40,1,100.0,0.0,32.7,10.8,5.9,20.43,40.91,3.08,1572.0
-Orleans,East,✗ Eliminated,14-24-0,1448.0,28,2,0.0,0.0,0.0,0.0,0.0,14.99,30.11,5.0,1468.0
-Hyannis,West,✓ Clinched,22-17-0,1526.0,44,1,100.0,100.0,70.2,41.6,14.0,22.53,45.12,1.0,1447.0
-Bourne,West,✓ Clinched,18-17-3,1505.0,39,1,100.0,0.0,56.9,27.0,10.1,18.49,40.05,2.0,1437.0
-Falmouth,West,✓ Clinched,17-19-2,1489.0,36,1,100.0,0.0,43.1,17.9,6.0,17.48,37.02,3.0,1448.0
-Wareham,West,,14-24-0,1447.0,28,2,92.0,0.0,27.8,12.6,3.0,14.8,29.74,4.08,1487.0
-Cotuit,West,,12-24-2,1437.0,26,2,8.0,0.0,2.0,0.9,0.3,12.88,27.89,4.92,1500.0
+Team,Division,Status,Record,Elo,Points,GR,Playoff Odds,Semis Odds,Finals Odds,Championship Odds,Expected Wins,Expected Points,Average Seed,SOS
+Yarmouth-Dennis,East,✓ Clinched,28-11-1,1585.0,57,0,100.0,70.1,43.0,31.7,28.0,57.0,1.0,0
+Brewster,East,✓ Clinched,25-12-3,1565.0,53,0,100.0,63.3,28.7,19.6,25.0,53.0,2.0,0
+Chatham,East,✓ Clinched,19-18-3,1505.0,41,0,100.0,29.9,14.8,8.7,19.0,41.0,4.0,0
+Harwich,East,✓ Clinched,21-19-0,1510.0,42,0,100.0,36.7,13.5,7.0,21.0,42.0,3.0,0
+Orleans,East,✗ Eliminated,16-24-0,1460.0,32,0,0.0,0.0,0.0,0.0,16.0,32.0,5.0,0
+Hyannis,West,✓ Clinched,22-18-0,1520.0,44,0,100.0,69.0,40.9,16.4,22.0,44.0,1.0,0
+Bourne,West,✓ Clinched,18-19-3,1495.0,39,0,100.0,56.9,27.0,8.0,18.0,39.0,2.0,0
+Falmouth,West,✓ Clinched,17-21-2,1480.0,36,0,100.0,43.1,18.1,5.3,17.0,36.0,3.0,0
+Cotuit,West,✓ Clinched,13-25-2,1440.0,28,0,100.0,31.0,14.0,3.3,13.0,28.0,4.0,0
+Wareham,West,✗ Eliminated,14-26-0,1440.0,28,0,0.0,0.0,0.0,0.0,14.0,28.0,5.0,0
